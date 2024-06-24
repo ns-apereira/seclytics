@@ -1,0 +1,77 @@
+---
+version: 2
+jobs:
+  deploy:
+    parallelism: 1
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+    docker:
+      - image: circleci/python:3.9.5
+    steps:
+      # Machine Setup
+      - checkout
+  build_python_3:
+    parallelism: 1
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+    docker:
+      - image: circleci/python:3.9.5
+    steps:
+      # Machine Setup
+      - checkout
+
+      # Prepare for artifact and test results.
+      # 'See docs https://circleci.com/docs/2.0/artifacts/'
+      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+
+      - run: sudo pip install --upgrade pip
+      - run: sudo pip install --upgrade .[test]
+      - run: sudo pip install cython
+      - run: sudo pip install pybloomfiltermmap3 
+
+      # run test
+      - run: python -m pytest tests --junitxml=/tmp/circleci-test-results/junit.xml
+
+      # Save test results
+      - store_test_results:
+          path: /tmp/circleci-test-results
+  build_python_27:
+    parallelism: 1
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+    docker:
+      - image: circleci/python:2.7.14
+    steps:
+      # Machine Setup
+      - checkout
+
+      # Prepare for artifact and test results.
+      # 'See docs https://circleci.com/docs/2.0/artifacts/'
+      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+
+      - run: sudo pip install --upgrade pip
+      - run: sudo pip install --upgrade .[test] 
+      - run: sudo pip install enum pybloomfiltermmap
+
+      # run test
+      - run: python -m pytest tests --junitxml=/tmp/circleci-test-results/junit.xml
+
+      # Save test results
+      - store_test_results:
+          path: /tmp/circleci-test-results
+workflows:
+  version: 2
+  build-deploy:
+    jobs:
+      - build_python_27
+      - build_python_3
+      - deploy:
+          requires:
+            - build_python_27
+            - build_python_3
+          filters:
+            branches:
+              only: master
